@@ -8,6 +8,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -32,8 +33,6 @@ public class ToolServiceConsumer {
      *   - toolA-destination
      *   - toolB-destination
      *   - toolC-destination
-     *
-     * Use a comma-separated list in 'topics' or a pattern if you want.
      */
     @KafkaListener(topics = {
             "${jfc.topics.toolA}",
@@ -47,21 +46,36 @@ public class ToolServiceConsumer {
             LOGGER.warn("Received unexpected message type: {}", value.getClass());
             return;
         }
-        Map<?, ?> jobMessage = (Map<?, ?>) value;
 
-        String jobId = (String) jobMessage.get("jobId");
-        String toolId = (String) jobMessage.get("toolId");
+        // The "batch" message map
+        Map<?, ?> batchMessage = (Map<?, ?>) value;
 
-        LOGGER.info("Received job {} for tool {}. Simulating processing...", jobId, toolId);
+        // Extract toolId
+        String toolId = (String) batchMessage.get("toolId");
+        LOGGER.info("Received a BATCH for tool {}. Simulating processing...", toolId);
 
-        Map<String, Object> progressMessage = Map.of(
-                "jobId", jobId,
-                "toolId", toolId,
-                "status", "PROGRESS"
-        );
-        kafkaTemplate.send(commonStatusTopic, progressMessage);
+        // Extract the list of jobs
+        List<Map<String, Object>> jobsInBatch;
+        try {
+            jobsInBatch = (List<Map<String, Object>>) batchMessage.get("jobs");
+        } catch (ClassCastException e) {
+            LOGGER.error("Unexpected 'jobs' format in batch message", e);
+            return;
+        }
 
-        // Simulate random processing time (1–5 seconds)
+        // 1) Immediately send PROGRESS status for each job
+        for (Map<String, Object> jobData : jobsInBatch) {
+            String jobId = (String) jobData.get("jobId");
+            Map<String, Object> progressMessage = Map.of(
+                    "jobId", jobId,
+                    "toolId", toolId,
+                    "status", "PROGRESS"
+            );
+            kafkaTemplate.send(commonStatusTopic, progressMessage);
+            LOGGER.info("Marked job {} as PROGRESS", jobId);
+        }
+
+        // 2) Simulate random processing time (1–5 seconds) for the entire batch
         try {
             int sleepMs = 1000 + random.nextInt(4000);
             Thread.sleep(sleepMs);
@@ -69,19 +83,23 @@ public class ToolServiceConsumer {
             Thread.currentThread().interrupt();
         }
 
-        // 75% chance success, 25% fail
-        boolean success = random.nextInt(100) < 75;
-        String status = success ? "SUCCESS" : "FAIL";
+        // 3) For each job in the batch, produce final SUCCESS/FAIL
+        for (Map<String, Object> jobData : jobsInBatch) {
+            String jobId = (String) jobData.get("jobId");
 
-        // Produce status to common-job-status
-        Map<String, Object> statusMessage = Map.of(
-                "jobId", jobId,
-                "toolId", toolId,
-                "status", status
-        );
+            // 75% chance success, 25% fail
+            boolean success = random.nextInt(100) < 75;
+            String status = success ? "SUCCESS" : "FAIL";
 
-        kafkaTemplate.send(commonStatusTopic, statusMessage);
+            Map<String, Object> statusMessage = Map.of(
+                    "jobId", jobId,
+                    "toolId", toolId,
+                    "status", status
+            );
 
-        LOGGER.info("Tool consumer for tool {} completed job {} with status {}", toolId, jobId, status);
+            kafkaTemplate.send(commonStatusTopic, statusMessage);
+
+            LOGGER.info("Tool consumer for tool {} completed job {} with status {}", toolId, jobId, status);
+        }
     }
 }
