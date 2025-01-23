@@ -9,7 +9,7 @@ import java.util.List;
 
 @Repository
 public interface JobRepository extends JpaRepository<JobEntity, String> {
-
+    List<JobEntity> findByToolId(String toolId);
     List<JobEntity> findByStatus(JobStatus status);
-    List<JobEntity> findTop10ByToolIdAndStatusOrderByPriorityDesc(String toolId, JobStatus status);
+    List<JobEntity> findByToolIdAndStatus(String toolId, JobStatus status);
 }

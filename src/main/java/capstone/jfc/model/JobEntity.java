@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 @Table(name = "jobs")
 public class JobEntity {
     @Id
-    @Column(name = "job_id", nullable = false, updatable = false)
+    @Column(name = "job_id", updatable = false)
     private String jobId;
 
     @Column(name = "tool_id")
@@ -15,7 +15,7 @@ public class JobEntity {
 
     @Lob
     @Column(name = "payload")
-    private String payload; // could store JSON as string
+    private String payload;
 
     @Column(name = "priority")
     private Integer priority;
@@ -30,10 +30,8 @@ public class JobEntity {
     @Column(name = "timestamp_updated")
     private LocalDateTime timestampUpdated;
 
-    // Constructors
     public JobEntity() {}
 
-    // Getters and Setters
     public String getJobId() {
         return jobId;
     }

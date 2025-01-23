@@ -8,33 +8,28 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 
 @Component
-public class LoadTestRunner implements CommandLineRunner {
+public class RandomJobs implements CommandLineRunner {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(LoadTestRunner.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(RandomJobs.class);
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final String ingestionTopic;
 
-    // Potential tool IDs recognized by JFC
     private static final List<String> TOOLS = Arrays.asList("ToolA", "ToolB", "ToolC");
 
-    public LoadTestRunner(KafkaTemplate<String, Object> kafkaTemplate,
-                          // Read from application.yml
-                          org.springframework.core.env.Environment env) {
+    public RandomJobs(KafkaTemplate<String, Object> kafkaTemplate, org.springframework.core.env.Environment env) {
         this.kafkaTemplate = kafkaTemplate;
         this.ingestionTopic = env.getProperty("jfc.topics.ingestion");
     }
 
     @Override
     public void run(String... args) throws Exception {
-        // For demonstration, produce 10 random jobs on startup
-        LOGGER.info("Generating 10 random jobs to ingestion topic...");
+        LOGGER.info("Generating 50 random jobs to ingestion topic...");
         for (int i = 1; i <= 50; i++) {
-            // Random job data
             String jobId = "job-" + UUID.randomUUID();
             String toolId = TOOLS.get(new Random().nextInt(TOOLS.size()));
             String payload = "{\"data\":\"Random payload " + i + "\"}";
-            int priority = new Random().nextInt(10) + 1; // 1–10
+            int priority = new Random().nextInt(10) + 1;
 
             Map<String, Object> message = new HashMap<>();
             message.put("jobId", jobId);

@@ -12,6 +12,7 @@ import java.util.Map;
 @Component
 public class JobProducer {
     private static final Logger LOGGER = LoggerFactory.getLogger(JobProducer.class);
+
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
     public JobProducer(KafkaTemplate<String, Object> kafkaTemplate) {

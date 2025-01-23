@@ -3,7 +3,7 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "tool_config")
-public class ToolConfigEntity {
+public class ToolEntity {
     @Id
     @Column(name = "tool_id", nullable = false)
     private String toolId;
@@ -15,7 +15,7 @@ public class ToolConfigEntity {
     private String destinationTopic;
 
 
-    public ToolConfigEntity() {}
+    public ToolEntity() {}
 
     public String getToolId() {
         return toolId;

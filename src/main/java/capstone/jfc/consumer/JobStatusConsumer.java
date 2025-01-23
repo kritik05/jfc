@@ -23,14 +23,11 @@ public class JobStatusConsumer {
     @KafkaListener(topics = "#{ '${jfc.topics.status}' }", groupId = "jfc-status-consumer")
     public void onStatusMessage(Map<String, Object> statusMessage) {
         try {
-            // Example statusMessage structure:
-            // { "jobId": "123", "toolId": "ToolA", "status": "SUCCESS" }
             String jobId = (String) statusMessage.get("jobId");
             String statusString = (String) statusMessage.get("status");
 
             JobStatus newStatus = JobStatus.valueOf(statusString);
 
-            // Fetch job from DB
             JobEntity job = jobRepository.findById(jobId).orElse(null);
             if (job == null) {
                 LOGGER.warn("Received status update for unknown job ID: {}", jobId);
@@ -43,7 +40,6 @@ public class JobStatusConsumer {
             LOGGER.info("Updated job {} to status {}", jobId, newStatus);
         } catch (Exception e) {
             LOGGER.error("Error processing job status message", e);
-            // Potentially push to DLQ
         }
     }
 }

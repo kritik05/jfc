@@ -28,18 +28,11 @@ public class ToolServiceConsumer {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    /**
-     * Single method that listens to multiple tool topics:
-     *   - toolA-destination
-     *   - toolB-destination
-     *   - toolC-destination
-     */
     @KafkaListener(topics = {
             "${jfc.topics.toolA}",
             "${jfc.topics.toolB}",
             "${jfc.topics.toolC}"
-    },
-            groupId = "simulated-tools-group")
+    }, groupId = "simulated-tools-group")
     public void onToolMessage(ConsumerRecord<String, Object> record) {
         Object value = record.value();
         if (!(value instanceof Map)) {
@@ -47,14 +40,11 @@ public class ToolServiceConsumer {
             return;
         }
 
-        // The "batch" message map
         Map<?, ?> batchMessage = (Map<?, ?>) value;
-
-        // Extract toolId
         String toolId = (String) batchMessage.get("toolId");
+
         LOGGER.info("Received a BATCH for tool {}. Simulating processing...", toolId);
 
-        // Extract the list of jobs
         List<Map<String, Object>> jobsInBatch;
         try {
             jobsInBatch = (List<Map<String, Object>>) batchMessage.get("jobs");
@@ -63,7 +53,6 @@ public class ToolServiceConsumer {
             return;
         }
 
-        // 1) Immediately send PROGRESS status for each job
         for (Map<String, Object> jobData : jobsInBatch) {
             String jobId = (String) jobData.get("jobId");
             Map<String, Object> progressMessage = Map.of(
@@ -75,7 +64,6 @@ public class ToolServiceConsumer {
             LOGGER.info("Marked job {} as PROGRESS", jobId);
         }
 
-        // 2) Simulate random processing time (1–5 seconds) for the entire batch
         try {
             int sleepMs = 1000 + random.nextInt(4000);
             Thread.sleep(sleepMs);
@@ -83,11 +71,9 @@ public class ToolServiceConsumer {
             Thread.currentThread().interrupt();
         }
 
-        // 3) For each job in the batch, produce final SUCCESS/FAIL
         for (Map<String, Object> jobData : jobsInBatch) {
             String jobId = (String) jobData.get("jobId");
 
-            // 75% chance success, 25% fail
             boolean success = random.nextInt(100) < 75;
             String status = success ? "SUCCESS" : "FAIL";
 
