@@ -23,9 +23,9 @@ public class BatchDispatcher {
     private final ToolConfigRepository toolConfigRepository;
     private final JobProducer jobProducer;
 
-    // A single global batch limit (e.g., 4)
-    @Value("${jfc.global-batch-size:4}")
-    private int globalBatchSize;
+    // Global concurrency limit (aka "max batch size" overall)
+    @Value("${jfc.global-concurrency-limit:5}")
+    private int globalConcurrencyLimit;
 
     public BatchDispatcher(JobRepository jobRepository,
                            ToolConfigRepository toolConfigRepository,
@@ -37,95 +37,111 @@ public class BatchDispatcher {
 
     @Scheduled(fixedRate = 10000)
     public void dispatchJobs() {
-        LOGGER.info("Starting batch dispatch with global batch size = {}", globalBatchSize);
+        LOGGER.info("=== Starting dispatch cycle ===");
 
-        // 1) Find all NEW jobs
-        List<JobEntity> newJobs = jobRepository.findByStatus(JobStatus.NEW);
-        if (newJobs.isEmpty()) {
-            LOGGER.info("No NEW jobs found to dispatch.");
+        // 1) Find how many jobs are already IN_PROGRESS across ALL tools
+        int allInProgressCount = jobRepository.countByStatus(JobStatus.IN_PROGRESS);
+        LOGGER.info("Total IN_PROGRESS jobs (all tools): {}", allInProgressCount);
+
+        if (allInProgressCount >= globalConcurrencyLimit) {
+            LOGGER.info("Global concurrency limit reached. No new jobs can be dispatched.");
             return;
         }
 
-        // 2) Group NEW jobs by toolId
+        // 2) Get all NEW jobs
+        List<JobEntity> newJobs = jobRepository.findByStatus(JobStatus.NEW);
+        if (newJobs.isEmpty()) {
+            LOGGER.info("No NEW jobs available.");
+            return;
+        }
+
+        // Group NEW jobs by tool
         Map<String, List<JobEntity>> jobsByTool = newJobs.stream()
                 .collect(Collectors.groupingBy(JobEntity::getToolId));
 
-        int totalDispatched = 0;
+        int totalDispatchedThisCycle = 0;
 
-        // 3) Iterate over each tool's new jobs
+        // 3) Iterate over each tool's NEW jobs
         for (String toolId : jobsByTool.keySet()) {
-            if (totalDispatched >= globalBatchSize) {
-                break; // reached global capacity
+
+            // If global concurrency is already used up, break out
+            if (allInProgressCount >= globalConcurrencyLimit) {
+                break;
             }
 
-            // a) Check how many are already IN_PROGRESS for this tool
-            int inProgressCount = jobRepository.countByToolIdAndStatus(toolId, JobStatus.IN_PROGRESS);
+            // a) Check tool concurrency usage
+            int toolInProgress = jobRepository.countByToolIdAndStatus(toolId, JobStatus.IN_PROGRESS);
 
-            // b) Lookup the tool config
+            // b) Get the tool config
             ToolEntity config = toolConfigRepository.findById(toolId).orElse(null);
             if (config == null) {
-                LOGGER.warn("No tool config found for tool: {}", toolId);
+                LOGGER.warn("No config found for tool '{}'; skipping...", toolId);
                 continue;
             }
 
             int toolLimit = config.getMaxConcurrentJobs();
-            int availableForTool = toolLimit - inProgressCount;
-            if (availableForTool <= 0) {
-                LOGGER.info("Tool {} is already at max concurrency ({})", toolId, toolLimit);
+
+            // c) Calculate how many new jobs we can dispatch for this tool
+            int toolAvailable = toolLimit - toolInProgress;
+            int globalAvailable = globalConcurrencyLimit - allInProgressCount;
+
+            // The actual number of jobs we can pick for this tool this cycle
+            int canDispatchForTool = Math.min(toolAvailable, globalAvailable);
+            if (canDispatchForTool <= 0) {
+                LOGGER.info("Tool {} at concurrency limit: inProgress={} limit={} or global limit reached",
+                        toolId, toolInProgress, toolLimit);
                 continue;
             }
 
-            // c) Also ensure we don't exceed the global batch
-            int remainingGlobalSlots = globalBatchSize - totalDispatched;
-            int numToDispatch = Math.min(availableForTool, remainingGlobalSlots);
-
-            // d) Pick up to numToDispatch from the new jobs for this tool
-            List<JobEntity> candidateJobs = jobsByTool.get(toolId).stream()
-                    // e.g. sort by priority desc if you want
-                     .sorted(Comparator.comparing(JobEntity::getTimestampCreated))
-                    .limit(numToDispatch)
+            // d) Pick up to 'canDispatchForTool' from the tool's NEW jobs
+            List<JobEntity> toolJobs = jobsByTool.get(toolId);
+            // Sort if needed by priority/time:
+             toolJobs.sort(Comparator.comparing(JobEntity::getTimestampCreated));
+            List<JobEntity> dispatchable = toolJobs.stream()
+                    .limit(canDispatchForTool)
                     .collect(Collectors.toList());
 
-            if (candidateJobs.isEmpty()) {
+            if (dispatchable.isEmpty()) {
                 continue;
             }
 
-            LOGGER.info("Dispatching {} jobs for tool {}. (toolLimit={}, inProgress={}, globalSlotsLeft={})",
-                    candidateJobs.size(), toolId, toolLimit, inProgressCount, remainingGlobalSlots);
+            LOGGER.info("Dispatching {} jobs for tool {} (toolLimit={}, toolInProgress={}, globalAvailable={})",
+                    dispatchable.size(), toolId, toolLimit, toolInProgress, globalAvailable);
 
-            // e) Mark them IN_PROGRESS
-            for (JobEntity job : candidateJobs) {
+            // e) Mark them IN_PROGRESS, produce them individually
+            for (JobEntity job : dispatchable) {
                 job.setStatus(JobStatus.IN_PROGRESS);
             }
-            jobRepository.saveAll(candidateJobs);
+            jobRepository.saveAll(dispatchable);
 
-            // f) Build a single 'batch' message for the tool
-            List<Map<String, Object>> jobsData = candidateJobs.stream().map(job -> {
-                Map<String, Object> jobMap = new HashMap<>();
-                jobMap.put("jobId", job.getJobId());
-                jobMap.put("payload", job.getPayload());
-                jobMap.put("priority", job.getPriority());
-                jobMap.put("toolId", job.getToolId());
-                return jobMap;
-            }).collect(Collectors.toList());
+            for (JobEntity job : dispatchable) {
+                Map<String, Object> message = new HashMap<>();
+                message.put("jobId", job.getJobId());
+                message.put("toolId", job.getToolId());
+                message.put("payload", job.getPayload());
+                message.put("priority", job.getPriority());
 
-            // This object represents the entire batch for the tool
-            Map<String, Object> batchMessage = new HashMap<>();
-            // Optional: a batch ID or timestamp if you like
-            batchMessage.put("toolId", toolId);
-            batchMessage.put("jobs", jobsData);
+                jobProducer.sendJobToTool(config.getDestinationTopic(), message);
 
-            // g) Send the entire batch as a single message
-            jobProducer.sendJobToTool(config.getDestinationTopic(), batchMessage);
+                // Increase counters
+                allInProgressCount++;
+                totalDispatchedThisCycle++;
 
-            // Update how many we've dispatched
-            totalDispatched += candidateJobs.size();
-            if (totalDispatched >= globalBatchSize) {
-                LOGGER.info("Global batch size reached. Dispatched {} total jobs.", totalDispatched);
+                // If we've reached the global limit, stop sending more
+                if (allInProgressCount >= globalConcurrencyLimit) {
+                    LOGGER.info("Global concurrency limit reached after dispatching job {}.", job.getJobId());
+                    break;
+                }
+            }
+
+            // If global concurrency is used up, we break out the tool loop
+            if (allInProgressCount >= globalConcurrencyLimit) {
                 break;
             }
         }
 
-        LOGGER.info("Batch dispatch complete. Dispatched {} jobs in total.", totalDispatched);
+        LOGGER.info("Dispatch cycle complete. Dispatched {} new jobs. Now {} total IN_PROGRESS.",
+                totalDispatchedThisCycle, allInProgressCount);
+        LOGGER.info("=== End of dispatch cycle ===");
     }
 }
