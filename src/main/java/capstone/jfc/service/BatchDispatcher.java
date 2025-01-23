@@ -5,6 +5,7 @@ import capstone.jfc.model.ToolEntity;
 import capstone.jfc.model.JobStatus;
 import capstone.jfc.repository.JobRepository;
 import capstone.jfc.repository.ToolConfigRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
@@ -18,12 +19,13 @@ import java.util.stream.Collectors;
 public class BatchDispatcher {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BatchDispatcher.class);
-
     private final JobRepository jobRepository;
     private final ToolConfigRepository toolConfigRepository;
     private final JobProducer jobProducer;
 
-    private final ExecutorService executorService = Executors.newFixedThreadPool(3);
+    // A single global batch limit (e.g., 4)
+    @Value("${jfc.global-batch-size:4}")
+    private int globalBatchSize;
 
     public BatchDispatcher(JobRepository jobRepository,
                            ToolConfigRepository toolConfigRepository,
@@ -35,74 +37,95 @@ public class BatchDispatcher {
 
     @Scheduled(fixedRate = 10000)
     public void dispatchJobs() {
-        LOGGER.info("Starting batch dispatch...");
+        LOGGER.info("Starting batch dispatch with global batch size = {}", globalBatchSize);
 
+        // 1) Find all NEW jobs
         List<JobEntity> newJobs = jobRepository.findByStatus(JobStatus.NEW);
         if (newJobs.isEmpty()) {
-            LOGGER.info("No NEW jobs found. Nothing to dispatch.");
+            LOGGER.info("No NEW jobs found to dispatch.");
             return;
         }
 
+        // 2) Group NEW jobs by toolId
         Map<String, List<JobEntity>> jobsByTool = newJobs.stream()
                 .collect(Collectors.groupingBy(JobEntity::getToolId));
 
+        int totalDispatched = 0;
+
+        // 3) Iterate over each tool's new jobs
         for (String toolId : jobsByTool.keySet()) {
-            executorService.submit(() -> processToolBatch(toolId, jobsByTool.get(toolId)));
-        }
+            if (totalDispatched >= globalBatchSize) {
+                break; // reached global capacity
+            }
 
-        LOGGER.info("Batch dispatch triggered for {} tool(s).", jobsByTool.size());
-    }
+            // a) Check how many are already IN_PROGRESS for this tool
+            int inProgressCount = jobRepository.countByToolIdAndStatus(toolId, JobStatus.IN_PROGRESS);
 
-    private void processToolBatch(String toolId, List<JobEntity> toolJobs) {
-        try {
+            // b) Lookup the tool config
             ToolEntity config = toolConfigRepository.findById(toolId).orElse(null);
             if (config == null) {
                 LOGGER.warn("No tool config found for tool: {}", toolId);
-                return;
+                continue;
             }
 
-            int maxConcurrent = config.getMaxConcurrentJobs();
-            String destinationTopic = config.getDestinationTopic();
+            int toolLimit = config.getMaxConcurrentJobs();
+            int availableForTool = toolLimit - inProgressCount;
+            if (availableForTool <= 0) {
+                LOGGER.info("Tool {} is already at max concurrency ({})", toolId, toolLimit);
+                continue;
+            }
 
-            toolJobs.sort(Comparator.comparing(JobEntity::getPriority));
+            // c) Also ensure we don't exceed the global batch
+            int remainingGlobalSlots = globalBatchSize - totalDispatched;
+            int numToDispatch = Math.min(availableForTool, remainingGlobalSlots);
 
-            List<JobEntity> batch = toolJobs.stream()
-                    .limit(maxConcurrent)
+            // d) Pick up to numToDispatch from the new jobs for this tool
+            List<JobEntity> candidateJobs = jobsByTool.get(toolId).stream()
+                    // e.g. sort by priority desc if you want
+                     .sorted(Comparator.comparing(JobEntity::getTimestampCreated))
+                    .limit(numToDispatch)
                     .collect(Collectors.toList());
 
-            if (batch.isEmpty()) {
-                LOGGER.info("No jobs to dispatch for tool {}", toolId);
-                return;
+            if (candidateJobs.isEmpty()) {
+                continue;
             }
 
-            LOGGER.info("Dispatching {} jobs for tool {} on thread {}",
-                    batch.size(), toolId, Thread.currentThread().getName());
+            LOGGER.info("Dispatching {} jobs for tool {}. (toolLimit={}, inProgress={}, globalSlotsLeft={})",
+                    candidateJobs.size(), toolId, toolLimit, inProgressCount, remainingGlobalSlots);
 
-            List<Map<String, Object>> jobsInBatch = new ArrayList<>();
-            for (JobEntity job : batch) {
-                Map<String, Object> jobData = new HashMap<>();
-                jobData.put("jobId", job.getJobId());
-                jobData.put("toolId", job.getToolId());
-                jobData.put("payload", job.getPayload());
-                jobData.put("priority", job.getPriority());
-                jobsInBatch.add(jobData);
+            // e) Mark them IN_PROGRESS
+            for (JobEntity job : candidateJobs) {
+                job.setStatus(JobStatus.IN_PROGRESS);
             }
+            jobRepository.saveAll(candidateJobs);
 
+            // f) Build a single 'batch' message for the tool
+            List<Map<String, Object>> jobsData = candidateJobs.stream().map(job -> {
+                Map<String, Object> jobMap = new HashMap<>();
+                jobMap.put("jobId", job.getJobId());
+                jobMap.put("payload", job.getPayload());
+                jobMap.put("priority", job.getPriority());
+                jobMap.put("toolId", job.getToolId());
+                return jobMap;
+            }).collect(Collectors.toList());
+
+            // This object represents the entire batch for the tool
             Map<String, Object> batchMessage = new HashMap<>();
+            // Optional: a batch ID or timestamp if you like
             batchMessage.put("toolId", toolId);
-            batchMessage.put("jobs", jobsInBatch);
+            batchMessage.put("jobs", jobsData);
 
-            jobProducer.sendJobToTool(destinationTopic, batchMessage);
+            // g) Send the entire batch as a single message
+            jobProducer.sendJobToTool(config.getDestinationTopic(), batchMessage);
 
-            for (JobEntity job : batch) {
-                job.setStatus(JobStatus.PENDING);
+            // Update how many we've dispatched
+            totalDispatched += candidateJobs.size();
+            if (totalDispatched >= globalBatchSize) {
+                LOGGER.info("Global batch size reached. Dispatched {} total jobs.", totalDispatched);
+                break;
             }
-            jobRepository.saveAll(batch);
-
-            LOGGER.info("Finished dispatch for tool {} on thread {}", toolId, Thread.currentThread().getName());
-
-        } catch (Exception e) {
-            LOGGER.error("Error dispatching jobs for tool {}", toolId, e);
         }
+
+        LOGGER.info("Batch dispatch complete. Dispatched {} jobs in total.", totalDispatched);
     }
 }

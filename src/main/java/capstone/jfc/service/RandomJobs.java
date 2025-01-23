@@ -29,7 +29,7 @@ public class RandomJobs implements CommandLineRunner {
             String jobId = "job-" + UUID.randomUUID();
             String toolId = TOOLS.get(new Random().nextInt(TOOLS.size()));
             String payload = "{\"data\":\"Random payload " + i + "\"}";
-            int priority = new Random().nextInt(10) + 1;
+            int priority = 1;
 
             Map<String, Object> message = new HashMap<>();
             message.put("jobId", jobId);
