@@ -59,6 +59,6 @@ jfc:
     ingestion: "job-ingestion"
     status: "common-job-status"
     # For demonstration, assume 3 tools:
-    toolA: "toolA-destination"
-    toolB: "toolB-destination"
-    toolC: "toolC-destination"
+    jobA: "JobA-destination"
+    jobB: "JobB-destination"
+    jobC: "JobC-destination"

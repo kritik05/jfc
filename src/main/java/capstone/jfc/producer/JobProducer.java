@@ -1,6 +1,5 @@
 package capstone.jfc.producer;
 
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +18,7 @@ public class JobProducer {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public void sendJobToTool(String topic, Map<String, Object> jobData) {
+    public void sendJobToJObCategory(String topic, Map<String, Object> jobData) {
         kafkaTemplate.send(topic, jobData);
         LOGGER.info("Sent job to topic {} with data: {}", topic, jobData);
     }

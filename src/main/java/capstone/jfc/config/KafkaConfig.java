@@ -13,14 +13,14 @@ public class KafkaConfig {
     @Value("${jfc.topics.status}")
     private String statusTopic;
 
-    @Value("${jfc.topics.toolA}")
-    private String toolATopic;
+    @Value("${jfc.topics.jobA}")
+    private String jobATopic;
 
-    @Value("${jfc.topics.toolB}")
-    private String toolBTopic;
+    @Value("${jfc.topics.jobB}")
+    private String jobBTopic;
 
-    @Value("${jfc.topics.toolC}")
-    private String toolCTopic;
+    @Value("${jfc.topics.jobC}")
+    private String jobCTopic;
 
     @Bean
     public NewTopic ingestionTopic() {
@@ -33,17 +33,17 @@ public class KafkaConfig {
     }
 
     @Bean
-    public NewTopic toolATopic() {
-        return new NewTopic(toolATopic, 3, (short) 1);
+    public NewTopic jobATopic() {
+        return new NewTopic(jobATopic, 3, (short) 1);
     }
 
     @Bean
-    public NewTopic toolBTopic() {
-        return new NewTopic(toolBTopic, 3, (short) 1);
+    public NewTopic jobBTopic() {
+        return new NewTopic(jobBTopic, 3, (short) 1);
     }
 
     @Bean
-    public NewTopic toolCTopic() {
-        return new NewTopic(toolCTopic, 3, (short) 1);
+    public NewTopic jobCTopic() {
+        return new NewTopic(jobCTopic, 3, (short) 1);
     }
 }

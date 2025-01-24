@@ -23,13 +23,13 @@ public class JobIngestionConsumer {
     public void onMessage(Map<String, Object> jobMessage) {
         try {
             String jobId = (String) jobMessage.get("jobId");
-            String toolId = (String) jobMessage.get("toolId");
+            String jobCategory = (String) jobMessage.get("jobCategory");
             String payload = (String) jobMessage.get("payload");
             Integer priority = (Integer) jobMessage.getOrDefault("priority", 0);
 
             JobEntity jobEntity = new JobEntity();
             jobEntity.setJobId(jobId);
-            jobEntity.setToolId(toolId);
+            jobEntity.setJobCategory(jobCategory);
             jobEntity.setPayload(payload);
             jobEntity.setPriority(priority);
             jobEntity.setStatus(JobStatus.NEW);
@@ -37,7 +37,7 @@ public class JobIngestionConsumer {
 
             jobRepository.save(jobEntity);
 
-            LOGGER.info("Inserted new job with ID {} for tool {}", jobId, toolId);
+            LOGGER.info("Inserted new job with ID {} for tool {}", jobId, jobCategory);
         } catch (Exception e) {
             LOGGER.error("Error processing job ingestion message", e);
         }

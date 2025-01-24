@@ -8,14 +8,13 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
 @Component
-public class ToolServiceConsumer {
+public class JobServiceConsumer {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(ToolServiceConsumer.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(JobServiceConsumer.class);
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Value("${jfc.topics.status}")
@@ -23,16 +22,16 @@ public class ToolServiceConsumer {
 
     private final Random random = new Random();
 
-    public ToolServiceConsumer(KafkaTemplate<String, Object> kafkaTemplate) {
+    public JobServiceConsumer(KafkaTemplate<String, Object> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
     }
 
     @KafkaListener(topics = {
-            "${jfc.topics.toolA}",
-            "${jfc.topics.toolB}",
-            "${jfc.topics.toolC}"
-    }, groupId = "simulated-tools-group")
-    public void onToolMessage(ConsumerRecord<String, Object> record) {
+            "${jfc.topics.jobA}",
+            "${jfc.topics.jobB}",
+            "${jfc.topics.jobC}"
+    }, groupId = "simulated-jobs-group")
+    public void onJobMessage(ConsumerRecord<String, Object> record) {
         Object value = record.value();
         if (!(value instanceof Map)) {
             LOGGER.warn("Received unexpected message type: {}", value.getClass());
@@ -41,8 +40,8 @@ public class ToolServiceConsumer {
         Map<?, ?> jobMessage = (Map<?, ?>) value;
 
         String jobId = (String) jobMessage.get("jobId");
-        String toolId = (String) jobMessage.get("toolId");
-        LOGGER.info("Tool consumer: received job {} for tool {}. Processing...", jobId, toolId);
+        String jobCategory = (String) jobMessage.get("jobCategory");
+        LOGGER.info("Tool consumer: received job {} for tool {}. Processing...", jobId, jobCategory);
 
         // Random processing time (1–5s)
         try {
@@ -58,11 +57,11 @@ public class ToolServiceConsumer {
 
         Map<String, Object> statusMessage = Map.of(
                 "jobId", jobId,
-                "toolId", toolId,
+                "jobCategory", jobCategory,
                 "status", status
         );
 
         kafkaTemplate.send(commonStatusTopic, statusMessage);
-        LOGGER.info("Tool consumer for tool {} completed job {} with status {}", toolId, jobId, status);
+        LOGGER.info("Tool consumer for tool {} completed job {} with status {}", jobCategory, jobId, status);
     }
 }

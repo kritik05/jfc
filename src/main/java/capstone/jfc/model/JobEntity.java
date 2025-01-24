@@ -10,8 +10,8 @@ public class JobEntity {
     @Column(name = "job_id", updatable = false)
     private String jobId;
 
-    @Column(name = "tool_id")
-    private String toolId;
+    @Column(name = "job_category")
+    private String jobCategory;
 
     @Lob
     @Column(name = "payload")
@@ -40,12 +40,12 @@ public class JobEntity {
         this.jobId = jobId;
     }
 
-    public String getToolId() {
-        return toolId;
+    public String getJobCategory() {
+        return jobCategory;
     }
 
-    public void setToolId(String toolId) {
-        this.toolId = toolId;
+    public void setJobCategory(String jobCategory) {
+        this.jobCategory = jobCategory;
     }
 
     public String getPayload() {

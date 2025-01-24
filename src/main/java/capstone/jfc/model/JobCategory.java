@@ -2,11 +2,11 @@ package capstone.jfc.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "tool_config")
-public class ToolEntity {
+@Table(name = "job_category_config")
+public class JobCategory {
     @Id
-    @Column(name = "tool_id", nullable = false)
-    private String toolId;
+    @Column(name = "job_category", nullable = false)
+    private String jobCategory;
 
     @Column(name = "max_concurrent_jobs")
     private Integer maxConcurrentJobs;
@@ -15,13 +15,13 @@ public class ToolEntity {
     private String destinationTopic;
 
 
-    public ToolEntity() {}
+    public JobCategory() {}
 
-    public String getToolId() {
-        return toolId;
+    public String getJobCategory() {
+        return jobCategory;
     }
-    public void setToolId(String toolId) {
-        this.toolId = toolId;
+    public void setJobCategory(String jobCategory) {
+        this.jobCategory = jobCategory;
     }
     public Integer getMaxConcurrentJobs() {
         return maxConcurrentJobs;
