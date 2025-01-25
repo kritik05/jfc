@@ -25,7 +25,7 @@ public class RandomJobs implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         LOGGER.info("Generating 50 random jobs to ingestion topic...");
-        for (int i = 1; i <= 50; i++) {
+        for (int i = 1; i <= 25; i++) {
             String jobId = "job-" + i;
             String jobCategory = JOBCATEGORY.get(new Random().nextInt(JOBCATEGORY.size()));
             String payload = "{\"data\":\"Random payload " + i + "\"}";

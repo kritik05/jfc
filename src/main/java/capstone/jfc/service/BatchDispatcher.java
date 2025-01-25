@@ -32,7 +32,7 @@ public class BatchDispatcher {
         this.jobProducer = jobProducer;
     }
 
-    @Scheduled(fixedRate = 1000)
+    @Scheduled(fixedRate =3000)
     public void dispatchJobs() {
         LOGGER.info("=== Starting dispatch cycle ===");
 
