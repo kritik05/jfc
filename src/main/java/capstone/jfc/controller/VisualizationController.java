@@ -25,16 +25,19 @@ public class VisualizationController {
         this.jobCategoryRepository = jobCategoryRepository;
     }
 
+    // Returns all jobs with status = NEW
     @GetMapping("/jobs/new")
     public List<JobEntity> getNewJobs() {
         return jobRepository.findByStatus(JobStatus.NEW);
     }
 
+    // Returns all jobs with status = IN_PROGRESS
     @GetMapping("/jobs/inprogress")
     public List<JobEntity> getInProgressJobs() {
         return jobRepository.findByStatus(JobStatus.IN_PROGRESS);
     }
 
+    // (Optional) Return the tool configs so we can see each tool's concurrency limit
     @GetMapping("/jobscategory")
     public List<JobCategory> getAllJobsCategory() {
         return jobCategoryRepository.findAll();

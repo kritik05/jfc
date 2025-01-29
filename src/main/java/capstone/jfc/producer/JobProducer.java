@@ -18,7 +18,7 @@ public class JobProducer {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public void sendJobToJObCategory(String topic, Map<String, Object> jobData) {
+    public void sendJobToJobCategory(String topic, Map<String, Object> jobData) {
         kafkaTemplate.send(topic, jobData);
         LOGGER.info("Sent job to topic {} with data: {}", topic, jobData);
     }

@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Optional;
 
 @Component
 public class JobIngestionConsumer {
@@ -25,7 +26,7 @@ public class JobIngestionConsumer {
             String jobId = (String) jobMessage.get("jobId");
             String jobCategory = (String) jobMessage.get("jobCategory");
             String payload = (String) jobMessage.get("payload");
-            Integer priority = (Integer) jobMessage.getOrDefault("priority", 0);
+            Integer priority = (Integer) jobMessage.getOrDefault("priority", Optional.of(0));
 
             JobEntity jobEntity = new JobEntity();
             jobEntity.setJobId(jobId);

@@ -6,43 +6,12 @@ spring:
     active: local
   datasource:
     url: jdbc:mysql://localhost:3306/capstone?useSSL=false&serverTimezone=UTC
-    username: root
-    password: password
+    username: capstone
+    password: MyCapstonePassword
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
-
-  kafka:
-    bootstrap-servers: localhost:9092
-    consumer:
-      group-id: "jfc-group"
-      auto-offset-reset: "earliest"
-    listener:
-      ack-mode: "record"
-    template:
-      default-topic: "job-ingestion"
-
----
-spring:
-  config:
-    activate:
-      on-profile: local
-  kafka:
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-
-    # CONSUMER CONFIG
-    consumer:
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      # Extra properties for JSON deserialization
-      properties:
-        spring.json.trusted.packages: "*"
-        spring.json.value.default.type: "java.util.HashMap"
-    listener:
-      ack-mode: record
 
 logging:
   level:

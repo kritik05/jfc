@@ -32,12 +32,15 @@ public class BatchDispatcher {
         this.jobProducer = jobProducer;
     }
 
-    @Scheduled(fixedRate =3000)
+    @Scheduled(fixedRate = 2000)
+    public synchronized void dispatchJobsScheduled() {
+        dispatchJobs();
+    }
+
     public void dispatchJobs() {
         LOGGER.info("=== Starting dispatch cycle ===");
 
         int globalInProgress = jobRepository.countByStatus(JobStatus.IN_PROGRESS);
-        LOGGER.info("Total IN_PROGRESS jobs (all tools): {}", globalInProgress);
 
         if (globalInProgress >= globalConcurrencyLimit) {
             LOGGER.info("Global concurrency limit reached. No new jobs can be dispatched.");
@@ -51,10 +54,7 @@ public class BatchDispatcher {
         }
         newJobs.sort(Comparator.comparing(JobEntity::getTimestampCreated));
 
-        int dispatchedCount = 0;
-
         for (JobEntity job : newJobs) {
-            // global concurrency is at limit, break out entirely
             if (globalInProgress >= globalConcurrencyLimit) {
                 LOGGER.info("Reached global concurrency limit while iterating jobs.");
                 break;
@@ -72,8 +72,6 @@ public class BatchDispatcher {
             int jobInProgress = jobRepository.countByJobCategoryAndStatus(jobCategory, JobStatus.IN_PROGRESS);
 
             if (jobInProgress >= jobLimit) {
-                LOGGER.info("Tool {} is at concurrency limit ({}). Cannot dispatch job {} right now.",
-                        jobCategory, jobLimit, job.getJobId());
                 continue;
             }
 
@@ -86,17 +84,11 @@ public class BatchDispatcher {
             message.put("payload", job.getPayload());
             message.put("priority", job.getPriority());
 
-            jobProducer.sendJobToJObCategory(config.getDestinationTopic(), message);
+            jobProducer.sendJobToJobCategory(config.getDestinationTopic(), message);
 
-            dispatchedCount++;
             globalInProgress++;
 
-            LOGGER.info("Dispatched job {} for tool {}. (jobInProgress={} -> after increment, globalInProgress={})",
-                    job.getJobId(), jobCategory, jobInProgress, globalInProgress);
         }
-
-        LOGGER.info("Dispatch cycle complete. Dispatched {} new jobs. Now {} total IN_PROGRESS.",
-                dispatchedCount, globalInProgress);
         LOGGER.info("=== End of dispatch cycle ===");
     }
 }
