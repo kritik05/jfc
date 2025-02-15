@@ -11,6 +11,5 @@ import java.util.List;
 public interface JobRepository extends JpaRepository<JobEntity, String> {
     List<JobEntity> findByStatus(JobStatus status);
     int countByJobCategoryAndStatus(String jobCategory, JobStatus status);
-
-    int countByStatus(JobStatus jobStatus);
+    int countByJobCategoryAndTenantIdAndStatus(String jobCategory, Integer tenantId, JobStatus status);
 }

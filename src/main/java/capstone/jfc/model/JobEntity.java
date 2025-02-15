@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "jobs")
+@Table(name = "job")
 public class JobEntity {
     @Id
     @Column(name = "job_id", updatable = false)
@@ -13,12 +13,12 @@ public class JobEntity {
     @Column(name = "job_category")
     private String jobCategory;
 
+    @Column(name = "tenant_id")
+    private Integer tenantId;
+
     @Lob
     @Column(name = "payload")
     private String payload;
-
-    @Column(name = "priority")
-    private Integer priority;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
@@ -32,6 +32,13 @@ public class JobEntity {
 
     public JobEntity() {}
 
+    public Integer getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(Integer tenantId) {
+        this.tenantId = tenantId;
+    }
     public String getJobId() {
         return jobId;
     }
@@ -54,14 +61,6 @@ public class JobEntity {
 
     public void setPayload(String payload) {
         this.payload = payload;
-    }
-
-    public Integer getPriority() {
-        return priority;
-    }
-
-    public void setPriority(Integer priority) {
-        this.priority = priority;
     }
 
     public JobStatus getStatus() {

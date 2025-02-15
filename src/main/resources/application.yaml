@@ -25,9 +25,12 @@ logging:
 # Kafka topic names
 jfc:
   topics:
-    ingestion: "job-ingestion"
-    status: "common-job-status"
-    # For demonstration, assume 3 tools:
-    jobA: "JobA-destination"
-    jobB: "JobB-destination"
-    jobC: "JobC-destination"
+    ingestion: "tool-scan-ingestion"
+
+app:
+  kafka:
+    topics:
+      toolscheduler: "tool-scheduler"
+      ack: "ack-topic"
+      parserjfc: "parse-jfc"
+      update: "update-jfc"
