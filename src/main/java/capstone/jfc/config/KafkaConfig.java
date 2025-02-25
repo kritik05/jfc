@@ -16,8 +16,11 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
+import org.springframework.util.backoff.FixedBackOff;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -25,15 +28,36 @@ import java.util.Map;
 @EnableKafka
 @Configuration
 public class KafkaConfig {
-//    @Value("${jfc.topics.ingestion}")
-//    private String ingestionTopic;
-//    @Bean
-//    public NewTopic ingestionTopic() {
-//        return new NewTopic(ingestionTopic, 3, (short) 1);
-//    }
 
     private static final String BOOTSTRAP_SERVERS = "localhost:9092";
     private static final String GROUP_ID = "jfc-group";
+
+    @Bean
+    public ConsumerFactory<String, String> unifiedConsumerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        // We use StringDeserializer for values so we can parse them manually
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "jfc-ingestion-consumer");
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        return new DefaultKafkaConsumerFactory<>(props);
+    }
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, String> unifiedListenerContainerFactory(
+            KafkaTemplate<String, Object> template) {
+        ConcurrentKafkaListenerContainerFactory<String, String> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(unifiedConsumerFactory());
+        // Optional: Add error handler + DLT
+        FixedBackOff backOff = new FixedBackOff(0L, 3L);
+        DefaultErrorHandler errorHandler =
+                new DefaultErrorHandler(new DeadLetterPublishingRecoverer(template), backOff);
+        factory.setCommonErrorHandler(errorHandler);
+        return factory;
+    }
+
+
 
     @Bean
     public ConsumerFactory<String, Object> consumerFactory() {
@@ -60,57 +84,57 @@ public class KafkaConfig {
         return factory;
     }
 
-    @Bean
-    public ConsumerFactory<String, ScanRequestEvent> scanRequestEventConsumerFactory() {
-        Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "jfc-ingestion-consumer");
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
-        JsonDeserializer<ScanRequestEvent> deserializer = new JsonDeserializer<>(ScanRequestEvent.class);
-
-        return new DefaultKafkaConsumerFactory<>(
-                props,
-                new StringDeserializer(),
-                deserializer
-        );
-    }
-
-    @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, ScanRequestEvent> scanRequestEventListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, ScanRequestEvent> factory =
-                new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(scanRequestEventConsumerFactory());
-        return factory;
-    }
-
-    @Bean
-    public ConsumerFactory<String, UpdateRequestEvent> updateRequestEventConsumerFactory() {
-        Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "jfc-ingestion-consumer");
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
-        JsonDeserializer<UpdateRequestEvent> deserializer = new JsonDeserializer<>(UpdateRequestEvent.class);
-
-        return new DefaultKafkaConsumerFactory<>(
-                props,
-                new StringDeserializer(),
-                deserializer
-        );
-    }
-
-    @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, UpdateRequestEvent> updateRequestEventListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, UpdateRequestEvent> factory =
-                new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(updateRequestEventConsumerFactory());
-        return factory;
-    }
+//    @Bean
+//    public ConsumerFactory<String, ScanRequestEvent> scanRequestEventConsumerFactory() {
+//        Map<String, Object> props = new HashMap<>();
+//        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+//        props.put(ConsumerConfig.GROUP_ID_CONFIG, "jfc-ingestion-consumer");
+//        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+//        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+//        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+//        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+//        JsonDeserializer<ScanRequestEvent> deserializer = new JsonDeserializer<>(ScanRequestEvent.class);
+//
+//        return new DefaultKafkaConsumerFactory<>(
+//                props,
+//                new StringDeserializer(),
+//                deserializer
+//        );
+//    }
+//
+//    @Bean
+//    public ConcurrentKafkaListenerContainerFactory<String, ScanRequestEvent> scanRequestEventListenerContainerFactory() {
+//        ConcurrentKafkaListenerContainerFactory<String, ScanRequestEvent> factory =
+//                new ConcurrentKafkaListenerContainerFactory<>();
+//        factory.setConsumerFactory(scanRequestEventConsumerFactory());
+//        return factory;
+//    }
+//
+//    @Bean
+//    public ConsumerFactory<String, UpdateRequestEvent> updateRequestEventConsumerFactory() {
+//        Map<String, Object> props = new HashMap<>();
+//        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+//        props.put(ConsumerConfig.GROUP_ID_CONFIG, "jfc-ingestion-consumer");
+//        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+//        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+//        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+//        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+//        JsonDeserializer<UpdateRequestEvent> deserializer = new JsonDeserializer<>(UpdateRequestEvent.class);
+//
+//        return new DefaultKafkaConsumerFactory<>(
+//                props,
+//                new StringDeserializer(),
+//                deserializer
+//        );
+//    }
+//
+//    @Bean
+//    public ConcurrentKafkaListenerContainerFactory<String, UpdateRequestEvent> updateRequestEventListenerContainerFactory() {
+//        ConcurrentKafkaListenerContainerFactory<String, UpdateRequestEvent> factory =
+//                new ConcurrentKafkaListenerContainerFactory<>();
+//        factory.setConsumerFactory(updateRequestEventConsumerFactory());
+//        return factory;
+//    }
 
 
     @Bean
@@ -139,30 +163,30 @@ public class KafkaConfig {
         return factory;
     }
 
-    @Bean
-    public ConsumerFactory<String, ParseRequestEvent> parseEventConsumerFactory() {
-        Map<String, Object> props = new HashMap<>();
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "jfc-ingestion-consumer");
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
-
-        JsonDeserializer<ParseRequestEvent> deserializer = new JsonDeserializer<>(ParseRequestEvent.class);
-        return new DefaultKafkaConsumerFactory<>(
-                props,
-                new StringDeserializer(),
-                deserializer
-        );
-    }
-    @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, ParseRequestEvent> parseListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, ParseRequestEvent> factory =
-                new ConcurrentKafkaListenerContainerFactory<>();
-        factory.setConsumerFactory(parseEventConsumerFactory());
-        return factory;
-    }
+//    @Bean
+//    public ConsumerFactory<String, ParseRequestEvent> parseEventConsumerFactory() {
+//        Map<String, Object> props = new HashMap<>();
+//        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+//        props.put(ConsumerConfig.GROUP_ID_CONFIG, "jfc-ingestion-consumer");
+//        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+//        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+//        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+//        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+//
+//        JsonDeserializer<ParseRequestEvent> deserializer = new JsonDeserializer<>(ParseRequestEvent.class);
+//        return new DefaultKafkaConsumerFactory<>(
+//                props,
+//                new StringDeserializer(),
+//                deserializer
+//        );
+//    }
+//    @Bean
+//    public ConcurrentKafkaListenerContainerFactory<String, ParseRequestEvent> parseListenerContainerFactory() {
+//        ConcurrentKafkaListenerContainerFactory<String, ParseRequestEvent> factory =
+//                new ConcurrentKafkaListenerContainerFactory<>();
+//        factory.setConsumerFactory(parseEventConsumerFactory());
+//        return factory;
+//    }
 
 
     @Bean
@@ -178,6 +202,20 @@ public class KafkaConfig {
     @Bean
     public KafkaTemplate<String, Object> kafkaTemplate() {
         return new KafkaTemplate<>(producerFactory());
+    }
+
+    @Bean
+    public ProducerFactory<String, String> eventProducerFactory() {
+        Map<String, Object> configProps = new HashMap<>();
+        configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
+        configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        // Use StringSerializer for value as well
+        configProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        return new DefaultKafkaProducerFactory<>(configProps);
+    }
+    @Bean
+    public KafkaTemplate<String, String> eventKafkaTemplate() {
+        return new KafkaTemplate<>(eventProducerFactory());
     }
 
 }

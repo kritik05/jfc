@@ -30,7 +30,6 @@ jfc:
 app:
   kafka:
     topics:
+      jobunified: jfc-common-jobs
       toolscheduler: "tool-scheduler"
       ack: "ack-topic"
-      parserjfc: "parse-jfc"
-      update: "update-jfc"

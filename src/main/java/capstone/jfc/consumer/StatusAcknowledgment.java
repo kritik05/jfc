@@ -3,12 +3,11 @@ package capstone.jfc.consumer;
 import capstone.jfc.event.AcknowledgementEvent;
 import capstone.jfc.model.*;
 import capstone.jfc.repository.JobRepository;
-import capstone.jfc.service.BatchDispatcher;
+import capstone.jfc.service.JobScheduler;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Random;
 
@@ -16,10 +15,10 @@ import java.util.Random;
 public class StatusAcknowledgment {
     private final Random random = new Random();
     private final JobRepository jobRepository;
-    private final BatchDispatcher batchDispatcher;
-    public StatusAcknowledgment(JobRepository jobRepository,BatchDispatcher batchDispatcher) {
+    private final JobScheduler jobScheduler;
+    public StatusAcknowledgment(JobRepository jobRepository, JobScheduler jobScheduler) {
         this.jobRepository = jobRepository;
-        this.batchDispatcher=batchDispatcher;
+        this.jobScheduler = jobScheduler;
     }
 
     @KafkaListener(
@@ -36,7 +35,7 @@ public class StatusAcknowledgment {
     }
     private void handleAcknowledgmentEvent(AcknowledgementEvent event) throws JsonProcessingException {
         try {
-            int sleepMs = 3000 + random.nextInt(3000);
+            int sleepMs = 7000;
             Thread.sleep(sleepMs);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -56,6 +55,6 @@ public class StatusAcknowledgment {
         JobEntity job = jobEntity.get();
         job.setStatus(JobStatus.valueOf(status));
         jobRepository.save(job);
-        batchDispatcher.dispatchJobs();
+        jobScheduler.dispatchJobs();
     }
 }

@@ -1,32 +1,32 @@
 package capstone.jfc.event;
 
-import capstone.jfc.model.ScanRequestPayload;
+
+import capstone.jfc.model.TicketTransitionRequestPayload;
 
 import java.util.UUID;
 
-public final class ScanRequestEvent implements Event<ScanRequestPayload> {
-    private ScanRequestPayload payload;
+public final class TicketTransitionRequestEvent implements Event<TicketTransitionRequestPayload> {
+    private  TicketTransitionRequestPayload payload;
     private String eventId;
 
-    public ScanRequestEvent(ScanRequestPayload payload) {
+    public TicketTransitionRequestEvent(TicketTransitionRequestPayload payload) {
         this.payload = payload;
         this.eventId= UUID.randomUUID().toString();
     }
-    public ScanRequestEvent(){
+    public TicketTransitionRequestEvent(){
         this.eventId = UUID.randomUUID().toString();
     }
     @Override
     public String getType() {
-        String toolname=payload.getTypes();
-        return "scan"+toolname;
+        return "ticketTransition";
     }
 
     @Override
-    public ScanRequestPayload getPayload() {
+    public TicketTransitionRequestPayload getPayload() {
         return payload;
     }
 
-    public void setPayload(ScanRequestPayload payload) {
+    public void setPayload(TicketTransitionRequestPayload payload) {
         this.payload = payload;
     }
 

@@ -1,9 +1,10 @@
 package capstone.jfc.model;
 
 
+
 public class ParseRequestPayload {
     private  String filePath;
-    private Integer tenantId;
+    private Integer tenantId; // or Long, depending on your system
     private String tooltype;
 
     public ParseRequestPayload(){};

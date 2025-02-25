@@ -1,5 +1,6 @@
 package capstone.jfc.model;
 
+
 public class UpdateRequestPayload {
     String uuid;
     String tooltype;

@@ -2,8 +2,8 @@ package capstone.jfc.model;
 import java.util.Objects;
 
 public class ScanRequestPayload {
-    private Integer tenantId;
-    private String types;
+    private Integer tenantId;         // for multi-tenant
+    private String types; // or List<ScanType> if you have an enum
 
     public ScanRequestPayload() {}
 
@@ -48,4 +48,3 @@ public class ScanRequestPayload {
                 '}';
     }
 }
-
