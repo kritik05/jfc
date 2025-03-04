@@ -51,6 +51,7 @@ public class JfcCommonTopicListener {
             case "ticketCreate":handleTicketCreateRequest(message);
             break;
             case "ticketTransition":handleTicketTransitionRequest(message);
+            case "runbook":handleRunbook(message);
             break;
             default : {
                 // ignore or log error
@@ -59,145 +60,61 @@ public class JfcCommonTopicListener {
         }
     }
 
-    private void handleTicketTransitionRequest(String message) throws JsonProcessingException {
-
-        TicketTransitionRequestEvent event= objectMapper.readValue(message, TicketTransitionRequestEvent.class);
-        TicketTransitionRequestPayload payload = event.getPayload();
-        Integer tenantId = payload.getTenantId();
+    private void processJobEvent(String eventType, Integer tenantId, Object payload) {
         String jobId = UUID.randomUUID().toString();
         JobEntity jobEntity = new JobEntity();
         jobEntity.setJobId(jobId);
-        jobEntity.setJobCategory(event.getType());
+        jobEntity.setJobCategory(eventType);
         jobEntity.setTenantId(tenantId);
-
         String eventJson;
         try {
-            eventJson = objectMapper.writeValueAsString(event.getPayload());
+            eventJson = objectMapper.writeValueAsString(payload);
         } catch (Exception ex) {
-            LOGGER.error("Error serializing ScanRequestEvent to JSON", ex);
-            eventJson = "SerializationError:"+ex.getMessage();
+            LOGGER.error("Error serializing payload for event type {}: {}", eventType, ex.getMessage(), ex);
+            eventJson = "SerializationError:" + ex.getMessage();
         }
         jobEntity.setPayload(eventJson);
         jobEntity.setStatus(JobStatus.NEW);
         jobEntity.setTimestampCreated(LocalDateTime.now());
         jobRepository.save(jobEntity);
+        LOGGER.info("Created new job {} of type {} for tenant {}", jobId, eventType, tenantId);
+    }
 
-        LOGGER.info("Created new job {} of type {} for tenant {}, {}/{}");
+    private void handleRunbook(String message) throws JsonProcessingException{
+        RunbookRequestEvent event= objectMapper.readValue(message, RunbookRequestEvent.class);
+        RunbookPayload payload = event.getPayload();
+        processJobEvent(event.getType(), payload.getTenantId(), payload);
+    }
 
+    private void handleTicketTransitionRequest(String message) throws JsonProcessingException {
+
+        TicketTransitionRequestEvent event= objectMapper.readValue(message, TicketTransitionRequestEvent.class);
+        TicketTransitionRequestPayload payload = event.getPayload();
+        processJobEvent(event.getType(), payload.getTenantId(), payload);
     }
 
     private void handleTicketCreateRequest(String message) throws JsonProcessingException {
 
         TicketCreateRequestEvent event= objectMapper.readValue(message, TicketCreateRequestEvent.class);
         TicketCreateRequestPayload payload = event.getPayload();
-        Integer tenantId = payload.getTenantId();
-        String jobId = UUID.randomUUID().toString();
-        JobEntity jobEntity = new JobEntity();
-        jobEntity.setJobId(jobId);
-        jobEntity.setJobCategory(event.getType());
-        jobEntity.setTenantId(tenantId);
-
-        String eventJson;
-        try {
-            eventJson = objectMapper.writeValueAsString(event.getPayload());
-        } catch (Exception ex) {
-            LOGGER.error("Error serializing ScanRequestEvent to JSON", ex);
-            eventJson = "SerializationError:"+ex.getMessage();
-        }
-        jobEntity.setPayload(eventJson);
-        jobEntity.setStatus(JobStatus.NEW);
-        jobEntity.setTimestampCreated(LocalDateTime.now());
-        jobRepository.save(jobEntity);
-
-        LOGGER.info("Created new job {} of type {} for tenant {}, {}/{}");
-
+        processJobEvent(event.getType(), payload.getTenantId(), payload);
     }
-
 
     private void handleScanRequestEvent(String ev) throws JsonProcessingException {
         ScanRequestEvent event= objectMapper.readValue(ev, ScanRequestEvent.class);
         ScanRequestPayload payload = event.getPayload();
-        Integer tenantId = payload.getTenantId();
-        String jobId = UUID.randomUUID().toString();
-        JobEntity jobEntity = new JobEntity();
-        jobEntity.setJobId(jobId);
-        jobEntity.setJobCategory(event.getType());
-        jobEntity.setTenantId(tenantId);
-
-        String eventJson;
-        try {
-            eventJson = objectMapper.writeValueAsString(event.getPayload());
-        } catch (Exception ex) {
-            LOGGER.error("Error serializing ScanRequestEvent to JSON", ex);
-            eventJson = "SerializationError:"+ex.getMessage();
-        }
-        jobEntity.setPayload(eventJson);
-        jobEntity.setStatus(JobStatus.NEW);
-        jobEntity.setTimestampCreated(LocalDateTime.now());
-        jobRepository.save(jobEntity);
-
-        LOGGER.info("Created new job {} of type {} for tenant {}, {}/{}");
+        processJobEvent(event.getType(), payload.getTenantId(), payload);
     }
 
     private void handleParseRequestEvent(String ev) throws JsonProcessingException {
         ParseRequestEvent event= objectMapper.readValue(ev, ParseRequestEvent.class);
-        // Extract the payload
         ParseRequestPayload payload = event.getPayload();
-
-        // For example, we have tenantId, a list of scanTypes, etc.
-        Integer tenantId = payload.getTenantId();
-        // 2) For each scanType, create a job in DB
-        String jobId = UUID.randomUUID().toString();
-        JobEntity jobEntity = new JobEntity();
-        jobEntity.setJobId(jobId);
-        jobEntity.setJobCategory(event.getType());
-        jobEntity.setTenantId(tenantId);
-
-        String eventJson;
-        try {
-            eventJson = objectMapper.writeValueAsString(event.getPayload());
-        } catch (Exception ex) {
-            LOGGER.error("Error serializing ScanRequestEvent to JSON", ex);
-            eventJson = "SerializationError:"+ex.getMessage();
-        }
-        jobEntity.setPayload(eventJson);
-
-        jobEntity.setStatus(JobStatus.NEW);
-        jobEntity.setTimestampCreated(LocalDateTime.now());
-
-        jobRepository.save(jobEntity);
-
-        LOGGER.info("Created new job {} of type {} for tenant {}, {}/{}");
+        processJobEvent(event.getType(), payload.getTenantId(), payload);
     }
     private void handleUpdateRequest(String ev) throws JsonProcessingException {
         UpdateRequestEvent event= objectMapper.readValue(ev, UpdateRequestEvent.class);
-        // Extract the payload
         UpdateRequestPayload payload = event.getPayload();
-
-
-        // For example, we have tenantId, a list of scanTypes, etc.
-        Integer tenantId = payload.getTenantId();
-        // 2) For each scanType, create a job in DB
-        String jobId = UUID.randomUUID().toString();
-        JobEntity jobEntity = new JobEntity();
-        jobEntity.setJobId(jobId);
-        jobEntity.setJobCategory(event.getType());
-        jobEntity.setTenantId(tenantId);
-
-        String eventJson;
-        try {
-            eventJson = objectMapper.writeValueAsString(event.getPayload());
-        } catch (Exception ex) {
-            LOGGER.error("Error serializing ScanRequestEvent to JSON", ex);
-            eventJson = "SerializationError:"+ex.getMessage();
-        }
-        jobEntity.setPayload(eventJson);
-
-        jobEntity.setStatus(JobStatus.NEW);
-        jobEntity.setTimestampCreated(LocalDateTime.now());
-
-        jobRepository.save(jobEntity);
-
-        LOGGER.info("Created new job {} of type {} for tenant {}, {}/{}");
+        processJobEvent(event.getType(), payload.getTenantId(), payload);
     }
+
 }

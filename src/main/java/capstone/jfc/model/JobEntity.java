@@ -17,7 +17,7 @@ public class JobEntity {
     private Integer tenantId;
 
     @Lob
-    @Column(name = "payload")
+    @Column(name = "payload",columnDefinition = "LONGTEXT")
     private String payload;
 
     @Enumerated(EnumType.STRING)

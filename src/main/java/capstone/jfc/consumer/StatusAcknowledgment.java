@@ -30,7 +30,6 @@ public class StatusAcknowledgment {
         try {
             handleAcknowledgmentEvent(event);
         } catch (Exception e) {
-//            LOGGER.error("Error processing ingestion message", e);
         }
     }
     private void handleAcknowledgmentEvent(AcknowledgementEvent event) throws JsonProcessingException {
@@ -40,10 +39,7 @@ public class StatusAcknowledgment {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        // Extract the payload
         AcknowledgementPayload payload = event.getPayload();
-
-        // For example, we have tenantId, a list of scanTypes, etc.
         String eventId = payload.getOriginalEventId();
         String status =payload.getStatus();
 

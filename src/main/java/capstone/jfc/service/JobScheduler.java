@@ -109,7 +109,6 @@ public class JobScheduler {
                 updateRequestEvent.setEventId(job.getJobId());
                 String json = objectMapper.writeValueAsString(updateRequestEvent);
                 sendingJob.send(topic, json);
-//                sendJob.send(topic, updateRequestEvent);
             }
             else if(jobCategory.startsWith("ticketCreate")){
                 TicketCreateRequestPayload ticketCreateRequestPayload =objectMapper.readValue(storedJson, TicketCreateRequestPayload.class);
@@ -117,20 +116,24 @@ public class JobScheduler {
                 ticketCreateRequestEvent.setEventId(job.getJobId());
                 String json = objectMapper.writeValueAsString(ticketCreateRequestEvent);
                 sendingJob.send(topic, json);
-//                sendJob.send(topic, ticketCreateRequestEvent);
             }
             else if(jobCategory.startsWith("ticketTransition")){
                 TicketTransitionRequestPayload ticketTransitionRequestPayload =objectMapper.readValue(storedJson, TicketTransitionRequestPayload.class);
                 TicketTransitionRequestEvent ticketTransitionRequestEvent=new TicketTransitionRequestEvent(ticketTransitionRequestPayload);
                 ticketTransitionRequestEvent.setEventId(job.getJobId());
                 String json = objectMapper.writeValueAsString(ticketTransitionRequestEvent);
-                System.out.println("hello");
-                System.out.println(json);
+                sendingJob.send(topic, json);
+            }
+            else if(jobCategory.startsWith("runbook")){
+
+                RunbookPayload  runbookPayload =objectMapper.readValue(storedJson, RunbookPayload.class);
+                RunbookRequestEvent runbookRequestEvent=new RunbookRequestEvent(runbookPayload);
+                runbookRequestEvent.setEventId(job.getJobId());
+                String json = objectMapper.writeValueAsString(runbookRequestEvent);
                 sendingJob.send(topic, json);
             }
             else {
                 LOGGER.warn("Unrecognized jobCategory={}, skipping...", jobCategory);
-                continue;
             }
 
         }

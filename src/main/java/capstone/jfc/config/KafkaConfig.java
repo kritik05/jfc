@@ -84,59 +84,6 @@ public class KafkaConfig {
         return factory;
     }
 
-//    @Bean
-//    public ConsumerFactory<String, ScanRequestEvent> scanRequestEventConsumerFactory() {
-//        Map<String, Object> props = new HashMap<>();
-//        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
-//        props.put(ConsumerConfig.GROUP_ID_CONFIG, "jfc-ingestion-consumer");
-//        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-//        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-//        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-//        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
-//        JsonDeserializer<ScanRequestEvent> deserializer = new JsonDeserializer<>(ScanRequestEvent.class);
-//
-//        return new DefaultKafkaConsumerFactory<>(
-//                props,
-//                new StringDeserializer(),
-//                deserializer
-//        );
-//    }
-//
-//    @Bean
-//    public ConcurrentKafkaListenerContainerFactory<String, ScanRequestEvent> scanRequestEventListenerContainerFactory() {
-//        ConcurrentKafkaListenerContainerFactory<String, ScanRequestEvent> factory =
-//                new ConcurrentKafkaListenerContainerFactory<>();
-//        factory.setConsumerFactory(scanRequestEventConsumerFactory());
-//        return factory;
-//    }
-//
-//    @Bean
-//    public ConsumerFactory<String, UpdateRequestEvent> updateRequestEventConsumerFactory() {
-//        Map<String, Object> props = new HashMap<>();
-//        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
-//        props.put(ConsumerConfig.GROUP_ID_CONFIG, "jfc-ingestion-consumer");
-//        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-//        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-//        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-//        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
-//        JsonDeserializer<UpdateRequestEvent> deserializer = new JsonDeserializer<>(UpdateRequestEvent.class);
-//
-//        return new DefaultKafkaConsumerFactory<>(
-//                props,
-//                new StringDeserializer(),
-//                deserializer
-//        );
-//    }
-//
-//    @Bean
-//    public ConcurrentKafkaListenerContainerFactory<String, UpdateRequestEvent> updateRequestEventListenerContainerFactory() {
-//        ConcurrentKafkaListenerContainerFactory<String, UpdateRequestEvent> factory =
-//                new ConcurrentKafkaListenerContainerFactory<>();
-//        factory.setConsumerFactory(updateRequestEventConsumerFactory());
-//        return factory;
-//    }
-
-
     @Bean
     public ConsumerFactory<String, AcknowledgementEvent> acknowledgementEventConsumerFactory() {
         Map<String, Object> props = new HashMap<>();
@@ -162,32 +109,6 @@ public class KafkaConfig {
         factory.setConsumerFactory(acknowledgementEventConsumerFactory());
         return factory;
     }
-
-//    @Bean
-//    public ConsumerFactory<String, ParseRequestEvent> parseEventConsumerFactory() {
-//        Map<String, Object> props = new HashMap<>();
-//        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
-//        props.put(ConsumerConfig.GROUP_ID_CONFIG, "jfc-ingestion-consumer");
-//        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-//        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-//        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-//        props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
-//
-//        JsonDeserializer<ParseRequestEvent> deserializer = new JsonDeserializer<>(ParseRequestEvent.class);
-//        return new DefaultKafkaConsumerFactory<>(
-//                props,
-//                new StringDeserializer(),
-//                deserializer
-//        );
-//    }
-//    @Bean
-//    public ConcurrentKafkaListenerContainerFactory<String, ParseRequestEvent> parseListenerContainerFactory() {
-//        ConcurrentKafkaListenerContainerFactory<String, ParseRequestEvent> factory =
-//                new ConcurrentKafkaListenerContainerFactory<>();
-//        factory.setConsumerFactory(parseEventConsumerFactory());
-//        return factory;
-//    }
-
 
     @Bean
     public ProducerFactory<String, Object> producerFactory() {
